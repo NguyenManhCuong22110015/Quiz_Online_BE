@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:3000', 
+    origin: ['http://localhost:3000', 'http://localhost:5173'], 
     methods: ['GET', 'POST'],
     credentials: true
 }));
@@ -36,7 +36,6 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
 
-// Start server using the HTTP server instance
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`WebSocket server is ready`);
