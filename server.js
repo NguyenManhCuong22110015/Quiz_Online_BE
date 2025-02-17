@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import http from 'http';
 import initWebSocket from './websocket.js';
+import roomRoutes from './routes/roomQuizRoute.js';
 
 dotenv.config(); 
 
@@ -35,7 +36,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
-
+app.use('/api/rooms', roomRoutes);
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`WebSocket server is ready`);
