@@ -6,12 +6,13 @@ const router = express.Router();
 // Create new room
 router.post('/create', async (req, res) => {
     try {
-        const { name, password, maxPlayers } = req.body;
+        const { name, password, maxPlayers, createdBy } = req.body;
         
         const room = new Room({
             name,
             password,
-            maxPlayers
+            maxPlayers,
+            createdBy
         });
 
         await room.save();

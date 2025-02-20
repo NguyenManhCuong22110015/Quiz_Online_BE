@@ -163,7 +163,7 @@ function initWebSocket(server) {
                         if (activeRoom.players.size === 0) {
                             activeRooms.delete(userRoom);
                             await Room.findByIdAndUpdate(userRoom, {
-                                isActive: false,
+                                isActive: true,
                                 currentPlayers: 0
                             });
                         } else {
