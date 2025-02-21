@@ -7,13 +7,27 @@ import questionRoutes from './routes/questionRoutes.js';
 import http from 'http';
 import initWebSocket from './websocket.js';
 import roomRoutes from './routes/roomQuizRoute.js';
-
+import session  from "express-session";
+import connectMongoDBSession  from "connect-mongodb-session";
 dotenv.config(); 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const MongoDBStore = connectMongoDBSession(session); 
+const store = new MongoDBStore({
+    uri: process.env.MONGO_URI,
+    collection: "sessions",
+});
 
-// Middleware
+app.use(
+    session({
+      secret: "123131213",
+      resave: false,
+      saveUninitialized: false,
+      store: store,
+      cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 }, // 1 giờ
+    })
+  );
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:5173'], 
     methods: ['GET', 'POST'],
