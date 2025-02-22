@@ -30,6 +30,10 @@ const roomSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    QuizzIds:  {
+        type: Array,
+        default:[]
     }
 });
 

@@ -114,4 +114,129 @@ router.get('/:roomId/check-access', async (req, res) => {
     }
 });
 
+router.put("/addQuizzes", async (req, res) => {
+    try {
+        const { roomId, quizIds } = req.body;
+        
+        const room = await Room.findByIdAndUpdate(
+            roomId,
+            { 
+                $addToSet: { 
+                    QuizzIds: { 
+                        $each: quizIds 
+                    } 
+                } 
+            },
+            { new: true }
+        );
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Quizzes added to room',
+            updatedQuizzes: room.quizzes
+        });
+    }
+    catch (error) {
+        console.error('Add quizzes error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to add quizzes to room'
+        });
+    }
+});
+
+// Update quizzes in room by replacing all existing quizzes
+router.put("/update", async (req, res) => {
+    try {
+        const { roomId, quizIds } = req.body;
+        
+        const room = await Room.findByIdAndUpdate(
+            roomId,
+            { 
+                $set: { QuizzIds: [] }, 
+            },
+            { new: true }
+        );
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        if(!quizIds){
+            return res.json({
+                success: true,
+                message: 'Quizzes updated in room',
+                updatedQuizzes: updatedRoom.QuizzIds
+            });
+        }
+
+        const updatedRoom = await Room.findByIdAndUpdate(
+            roomId,
+            { 
+                $set: { 
+                    QuizzIds: quizIds  
+                } 
+            },
+            { new: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Quizzes updated in room',
+            updatedQuizzes: updatedRoom.QuizzIds
+        });
+    }
+    catch (error) {
+        console.error('Update quizzes error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update quizzes in room'
+        });
+    }
+});
+
+router.get("/getRoom/:roomId", async function (req, res) {
+    try {
+        const roomId = req.params.roomId;
+        const room = await Room.findById(roomId);
+        res.json(room);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+router.get("/getQuizzes", async (req, res) => {
+  try {
+    const roomId = req.query.roomId;
+    const quizzes = await Room.findById(roomId).select('QuizzIds');
+    res.json(quizzes);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+router.put("/updateRoomName" , async (req, res) => {
+    try {
+        const { roomId, name } = req.body;
+        console.log(req.body);
+        const updatedRoom = await Room.findByIdAndUpdate
+        (roomId, { name }, { new: true });
+        res.json(updatedRoom);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+);
+
 export default router;

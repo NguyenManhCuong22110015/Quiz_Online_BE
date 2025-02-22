@@ -3,7 +3,7 @@ const router = Router();
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-
+const SECRET_KEY = "your-secret-key";
 import User from '../models/User.js';
 
 // API: Get all users
@@ -49,17 +49,10 @@ router.post('/del', async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
-router.get("/session", (req, res) => {
-  if (req.session.user) {
-      res.json({ loggedIn: true, user: req.session.user });
-  } else {
-      res.json({ loggedIn: false });
-  }
-});
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    // Find user and select necessary fields
     const user = await User
       .findOne({ email: email })
       .select("_id name email password role");
@@ -78,14 +71,17 @@ router.post("/login", async (req, res) => {
         message: "Invalid password" 
       });
     }
-    req.session.user = { 
-      name: user.name,
-      
-    };
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1h' }
+    );
 
     res.status(200).json({
       success: true,
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -93,7 +89,6 @@ router.post("/login", async (req, res) => {
         role: user.role
       }
     });
-
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ 
@@ -102,6 +97,9 @@ router.post("/login", async (req, res) => {
     });
   }
 });
+
+// Update session check route
+
 
 
 router.post('/signup', async (req, res) => {
@@ -142,6 +140,18 @@ router.post('/signup', async (req, res) => {
     });
   }
 });
+
+router.get('/check-auth', (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  
+  if (!token) return res.status(401).json({ message: 'Chưa đăng nhập' });
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+      if (err) return res.status(403).json({ message: 'Token không hợp lệ' });
+      res.json({ message: 'Đã đăng nhập', user: decoded });
+  });
+});
+
 
 
 export default router;

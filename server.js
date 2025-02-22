@@ -9,32 +9,28 @@ import initWebSocket from './websocket.js';
 import roomRoutes from './routes/roomQuizRoute.js';
 import session  from "express-session";
 import connectMongoDBSession  from "connect-mongodb-session";
+import jwt from "jsonwebtoken";
+import quizRoutes from './routes/quizzRoutes.js';
 dotenv.config(); 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 const MongoDBStore = connectMongoDBSession(session); 
 const store = new MongoDBStore({
     uri: process.env.MONGO_URI,
     collection: "sessions",
 });
 
-app.use(
-    session({
-      secret: "123131213",
-      resave: false,
-      saveUninitialized: false,
-      store: store,
-      cookie: { secure: false, httpOnly: true, maxAge: 1000 * 60 * 60 }, // 1 giờ
-    })
-  );
-app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173'], 
-    methods: ['GET', 'POST'],
-    credentials: true
-}));
 
-app.use(express.json());
+
+app.use(cors({
+    origin: [ 'http://localhost:5173'], 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    optionsSuccessStatus: 200
+}));
 
 
 const server = http.createServer(app);
@@ -51,6 +47,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/quizzes', quizRoutes);
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`WebSocket server is ready`);
