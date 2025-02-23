@@ -27,7 +27,7 @@ const store = new MongoDBStore({
 
 
 app.use(cors({
-    origin: [ 'http://localhost:5173'], 
+    origin: [ 'http://localhost:5173','https://quizze-2j60.onrender.com'], 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     optionsSuccessStatus: 200
 }));
