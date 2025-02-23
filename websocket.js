@@ -17,7 +17,14 @@ async function createRoom(roomId) {
         activeRooms.set(roomId, {
             players: new Map(),
             currentQuestion: null,
-            messages: []
+            messages: [],
+            gameState: {
+                questions: [],
+                currentQuestionIndex: -1,
+                playerAnswers: new Map(),
+                scores: new Map(),
+                timeLimit: 30
+            }
         });
         
         // Update room status in database
@@ -28,7 +35,27 @@ async function createRoom(roomId) {
         return false;
     }
 }
+async function startGame(roomId) {
+    const activeRoom = activeRooms.get(roomId);
+    if (!activeRoom) return false;
 
+    try {
+        // Get room from database to get quiz IDs
+        const roomDoc = await Room.findById(roomId);
+        const quizzes = await Quizze.find({ _id: { $in: roomDoc.QuizzIds } });
+        
+        activeRoom.gameState.questions = quizzes;
+        activeRoom.gameState.currentQuestionIndex = 0;
+        activeRoom.gameState.playerAnswers.clear();
+        activeRoom.gameState.scores.clear();
+
+        sendNextQuestion(roomId);
+        return true;
+    } catch (error) {
+        console.error("Error starting game:", error);
+        return false;
+    }
+}
 async function joinRoom(roomId, username, ws) {
     try {
         // Get room from database
@@ -70,7 +97,84 @@ async function joinRoom(roomId, username, ws) {
         return { success: false, message: "Server error" };
     }
 }
+function sendNextQuestion(roomId) {
+    const activeRoom = activeRooms.get(roomId);
+    if (!activeRoom) return;
 
+    const { gameState } = activeRoom;
+    
+    if (gameState.currentQuestionIndex >= gameState.questions.length) {
+        endGame(roomId);
+        return;
+    }
+
+    const question = gameState.questions[gameState.currentQuestionIndex];
+    gameState.playerAnswers.clear();
+
+    broadcastToRoom(roomId, {
+        type: 'question',
+        question: {
+            text: question.text,
+            options: question.options,
+            timeLimit: gameState.timeLimit
+        }
+    });
+
+    // Set timeout for question
+    setTimeout(() => checkAnswersAndProgress(roomId), gameState.timeLimit * 1000);
+}
+function checkAnswersAndProgress(roomId) {
+    const activeRoom = activeRooms.get(roomId);
+    if (!activeRoom) return;
+
+    const { gameState } = activeRoom;
+    const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+
+    // Calculate scores and prepare results
+    const results = Array.from(activeRoom.players.keys()).map(username => {
+        const answer = gameState.playerAnswers.get(username);
+        const isCorrect = answer?.answer === currentQuestion.correctAnswer;
+        
+        if (isCorrect) {
+            const currentScore = gameState.scores.get(username) || 0;
+            const timeBonus = Math.floor((answer.timeRemaining || 0) / 2);
+            gameState.scores.set(username, currentScore + 10 + timeBonus);
+        }
+
+        return {
+            username,
+            correct: isCorrect
+        };
+    });
+
+    // Send results to all players
+    broadcastToRoom(roomId, {
+        type: 'all_answers',
+        answers: results
+    });
+
+    // Wait 5 seconds before next question
+    setTimeout(() => {
+        gameState.currentQuestionIndex++;
+        sendNextQuestion(roomId);
+    }, 5000);
+}
+function endGame(roomId) {
+    const activeRoom = activeRooms.get(roomId);
+    if (!activeRoom) return;
+
+    const finalResults = Array.from(activeRoom.gameState.scores.entries())
+        .map(([username, score]) => ({
+            username,
+            score
+        }))
+        .sort((a, b) => b.score - a.score);
+
+    broadcastToRoom(roomId, {
+        type: 'end_game',
+        results: finalResults
+    });
+}
 function initWebSocket(server) {
     const wss = new WebSocketServer({ server });
 
@@ -133,6 +237,48 @@ function initWebSocket(server) {
                                         time: data.time 
                                     }])
                             });
+                        }
+                        break;
+                    case "start_game":
+                        const {roomId} = data;
+                        console.log("📩 Start game:", roomId);
+                        const room = activeRooms.get(roomId);
+                        if (room) {
+                            room.players.forEach(player => {
+                                player.ws.send(JSON.stringify({
+                                    type: "start_game",
+                                    message: "Game is starting"
+                                }));
+                            })
+                        }
+                        break;
+                    case "submit_answer": {
+                            if (!userRoom) return;
+                            const activeRoom = activeRooms.get(userRoom);
+                            if (!activeRoom) return;
+                        
+                            activeRoom.gameState.playerAnswers.set(data.username, {
+                                answer: data.answer,
+                                timeRemaining: data.timeRemaining
+                            });
+                        
+                            // If all players answered, progress immediately
+                            if (activeRoom.gameState.playerAnswers.size === activeRoom.players.size) {
+                                checkAnswersAndProgress(userRoom);
+                            }
+                            break;
+                        }
+                    case "end_game":
+                        const {roomId_start} = data;
+                        console.log("📩 End game:", roomId_start);
+                        const playroom = activeRooms.get(roomId_start);
+                        if (playroom) {
+                            playroom.players.forEach(player => {
+                                player.ws.send(JSON.stringify({
+                                    type: "end_game",
+                                    message: "Game has ended"
+                                }));
+                            })
                         }
                         break;
                 }
