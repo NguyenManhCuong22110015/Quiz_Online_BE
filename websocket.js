@@ -1,37 +1,35 @@
 import { WebSocketServer } from 'ws';
 import Room from './models/RoomQuiz.js';
-
+import Quizze from './models/Quizze.js';
+import Question from './models/Question.js';
 // Store active connections and game states
 const activeRooms = new Map();
-
+class GameState {
+    constructor() {
+        this.isActive = false;
+        this.questions = [];
+        this.currentQuestionIndex = -1;
+        this.playerAnswers = new Map();
+        this.scores = new Map();
+        this.timeLimit = 30; // seconds
+        this.timer = null;
+    }
+}
 async function createRoom(roomId) {
     try {
-        // Check if room exists in database
         const roomDoc = await Room.findById(roomId);
-        if (!roomDoc) {
-            console.error("❌ Room not found in database:", roomId);
-            return false;
-        }
+        if (!roomDoc) return false;
 
-        // Create active room state
         activeRooms.set(roomId, {
             players: new Map(),
-            currentQuestion: null,
             messages: [],
-            gameState: {
-                questions: [],
-                currentQuestionIndex: -1,
-                playerAnswers: new Map(),
-                scores: new Map(),
-                timeLimit: 30
-            }
+            gameState: new GameState()
         });
-        
-        // Update room status in database
+
         await Room.findByIdAndUpdate(roomId, { isActive: true });
         return true;
     } catch (error) {
-        console.error("❌ Error creating room:", error);
+        console.error("Error creating room:", error);
         return false;
     }
 }
@@ -40,22 +38,38 @@ async function startGame(roomId) {
     if (!activeRoom) return false;
 
     try {
-        // Get room from database to get quiz IDs
         const roomDoc = await Room.findById(roomId);
-        const quizzes = await Quizze.find({ _id: { $in: roomDoc.QuizzIds } });
-        
-        activeRoom.gameState.questions = quizzes;
+        const quizzes = await Quizze.find({ 
+            _id: { $in: roomDoc.QuizzIds }
+        });
+
+        if (!quizzes.length) {
+            broadcastToRoom(roomId, {
+                type: "error",
+                message: "No quizzes found"
+            });
+            return false;
+        }
+        const questions = await Question.find({
+            quizId: { $in: quizzes.map(quiz => quiz._id) }
+        });
+
+        activeRoom.gameState.isActive = true;
+        activeRoom.gameState.questions = questions;
         activeRoom.gameState.currentQuestionIndex = 0;
         activeRoom.gameState.playerAnswers.clear();
         activeRoom.gameState.scores.clear();
 
-        sendNextQuestion(roomId);
+        // Send first question after delay
+        setTimeout(() => sendNextQuestion(roomId), 3000);
         return true;
     } catch (error) {
         console.error("Error starting game:", error);
         return false;
     }
 }
+
+
 async function joinRoom(roomId, username, ws) {
     try {
         // Get room from database
@@ -97,20 +111,24 @@ async function joinRoom(roomId, username, ws) {
         return { success: false, message: "Server error" };
     }
 }
+
 function sendNextQuestion(roomId) {
     const activeRoom = activeRooms.get(roomId);
-    if (!activeRoom) return;
+    if (!activeRoom?.gameState?.isActive) return;
 
     const { gameState } = activeRoom;
     
     if (gameState.currentQuestionIndex >= gameState.questions.length) {
-        endGame(roomId);
+        console.log("🏁 Game over");
         return;
     }
 
     const question = gameState.questions[gameState.currentQuestionIndex];
+
+    // Clear previous answers
     gameState.playerAnswers.clear();
 
+    // Send question to all players
     broadcastToRoom(roomId, {
         type: 'question',
         question: {
@@ -120,40 +138,46 @@ function sendNextQuestion(roomId) {
         }
     });
 
-    // Set timeout for question
-    setTimeout(() => checkAnswersAndProgress(roomId), gameState.timeLimit * 1000);
+    // Set timer for question
+    if (gameState.timer) clearTimeout(gameState.timer);
+    gameState.timer = setTimeout(() => {
+        checkAnswersAndProgress(roomId);
+    }, gameState.timeLimit * 1000);
 }
 function checkAnswersAndProgress(roomId) {
     const activeRoom = activeRooms.get(roomId);
-    if (!activeRoom) return;
+    if (!activeRoom?.gameState?.isActive) return;
 
     const { gameState } = activeRoom;
     const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
 
-    // Calculate scores and prepare results
+    // Calculate results
     const results = Array.from(activeRoom.players.keys()).map(username => {
-        const answer = gameState.playerAnswers.get(username);
-        const isCorrect = answer?.answer === currentQuestion.correctAnswer;
+        const playerAnswer = gameState.playerAnswers.get(username);
+        const isCorrect = playerAnswer?.answer === currentQuestion.correctAnswer;
         
         if (isCorrect) {
             const currentScore = gameState.scores.get(username) || 0;
-            const timeBonus = Math.floor((answer.timeRemaining || 0) / 2);
+            const timeBonus = Math.floor((playerAnswer?.timeRemaining || 0) / 2);
             gameState.scores.set(username, currentScore + 10 + timeBonus);
         }
 
         return {
             username,
-            correct: isCorrect
+            answer: playerAnswer?.answer,
+            correct: isCorrect,
+            score: gameState.scores.get(username) || 0
         };
     });
 
-    // Send results to all players
+    // Send results
     broadcastToRoom(roomId, {
         type: 'all_answers',
-        answers: results
+        answers: results,
+        correctAnswer: currentQuestion.correctAnswer
     });
 
-    // Wait 5 seconds before next question
+    // Move to next question after delay
     setTimeout(() => {
         gameState.currentQuestionIndex++;
         sendNextQuestion(roomId);
@@ -161,7 +185,7 @@ function checkAnswersAndProgress(roomId) {
 }
 function endGame(roomId) {
     const activeRoom = activeRooms.get(roomId);
-    if (!activeRoom) return;
+    if (!activeRoom?.gameState?.isActive) return;
 
     const finalResults = Array.from(activeRoom.gameState.scores.entries())
         .map(([username, score]) => ({
@@ -174,7 +198,14 @@ function endGame(roomId) {
         type: 'end_game',
         results: finalResults
     });
+
+    // Cleanup
+    if (activeRoom.gameState.timer) {
+        clearTimeout(activeRoom.gameState.timer);
+    }
+    activeRoom.gameState = new GameState();
 }
+
 function initWebSocket(server) {
     const wss = new WebSocketServer({ server });
 
@@ -239,31 +270,36 @@ function initWebSocket(server) {
                             });
                         }
                         break;
-                    case "start_game":
-                        const {roomId} = data;
-                        console.log("📩 Start game:", roomId);
-                        const room = activeRooms.get(roomId);
-                        if (room) {
-                            room.players.forEach(player => {
-                                player.ws.send(JSON.stringify({
+                    case "start_game": {
+                            const { roomId } = data;
+                            const room = activeRooms.get(roomId);
+                            if (room) {
+                                // First notify all players
+                                broadcastToRoom(roomId, {
                                     type: "start_game",
                                     message: "Game is starting"
-                                }));
-                            })
-                        }
+                                });
+                                // Then start the game
+                                await startGame(roomId);
+                            }
                         break;
-                    case "submit_answer": {
+                        }
+                        
+                        case "submit_answer": {
                             if (!userRoom) return;
                             const activeRoom = activeRooms.get(userRoom);
-                            if (!activeRoom) return;
+                            if (!activeRoom?.gameState?.isActive) return;
                         
-                            activeRoom.gameState.playerAnswers.set(data.username, {
-                                answer: data.answer,
-                                timeRemaining: data.timeRemaining
+                            const { username, answer, timeRemaining } = data;
+                            activeRoom.gameState.playerAnswers.set(username, {
+                                answer,
+                                timeRemaining
                             });
                         
-                            // If all players answered, progress immediately
                             if (activeRoom.gameState.playerAnswers.size === activeRoom.players.size) {
+                                if (activeRoom.gameState.timer) {
+                                    clearTimeout(activeRoom.gameState.timer);
+                                }
                                 checkAnswersAndProgress(userRoom);
                             }
                             break;
