@@ -39,3 +39,15 @@ export const createQuestion = async (req, res) => {
 }
 
 
+export const getQuestionsByQuizzId = async (req, res) => {
+    try {
+        const quizId = req.query.quizId; 
+        console.log(quizId);
+        const questions = await Question.find({ quizId: quizId });
+        res.json(questions);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+

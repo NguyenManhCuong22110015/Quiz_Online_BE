@@ -13,8 +13,18 @@ router.get('/getByUserId', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-
+router.get('/getAll', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const quizze = await Quizze.find({ 
+      createdBy: { $ne: userId } 
+    }); 
+   
+    res.json(quizze);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 router.post("/create", async (req, res) => {
   const { title, description, createdBy } = req.body;
   const quizze = new Quizze({
