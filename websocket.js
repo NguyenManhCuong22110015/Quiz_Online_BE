@@ -11,10 +11,10 @@ class GameState {
         this.currentQuestionIndex = -1;
         this.playerAnswers = new Map();
         this.scores = new Map();
-        this.timeLimit = 30; // seconds
-        this.timer = null;
+        this.totalQuestions = 0;
     }
 }
+
 async function createRoom(roomId) {
     try {
         const roomDoc = await Room.findById(roomId);
@@ -59,9 +59,10 @@ async function startGame(roomId) {
         activeRoom.gameState.currentQuestionIndex = 0;
         activeRoom.gameState.playerAnswers.clear();
         activeRoom.gameState.scores.clear();
+        activeRoom.gameState.totalQuestions = questions.length; // Set total questions
 
-        // Send first question after delay
-        setTimeout(() => sendNextQuestion(roomId), 3000);
+        // Send first question
+        sendNextQuestion(roomId);
         return true;
     } catch (error) {
         console.error("Error starting game:", error);
@@ -120,6 +121,7 @@ function sendNextQuestion(roomId) {
     
     if (gameState.currentQuestionIndex >= gameState.questions.length) {
         console.log("🏁 Game over");
+        endGame(roomId);
         return;
     }
 
@@ -128,21 +130,17 @@ function sendNextQuestion(roomId) {
     // Clear previous answers
     gameState.playerAnswers.clear();
 
-    // Send question to all players
+    // Send question to all players with question number info
     broadcastToRoom(roomId, {
         type: 'question',
         question: {
             text: question.text,
             options: question.options,
-            timeLimit: gameState.timeLimit
-        }
-    });
 
-    // Set timer for question
-    if (gameState.timer) clearTimeout(gameState.timer);
-    gameState.timer = setTimeout(() => {
-        checkAnswersAndProgress(roomId);
-    }, gameState.timeLimit * 1000);
+        },
+        questionNumber: gameState.currentQuestionIndex + 1,
+        totalQuestions: gameState.totalQuestions
+    });
 }
 function checkAnswersAndProgress(roomId) {
     const activeRoom = activeRooms.get(roomId);
@@ -154,12 +152,12 @@ function checkAnswersAndProgress(roomId) {
     // Calculate results
     const results = Array.from(activeRoom.players.keys()).map(username => {
         const playerAnswer = gameState.playerAnswers.get(username);
-        const isCorrect = playerAnswer?.answer === currentQuestion.correctAnswer;
+        // Kiểm tra đáp án đúng bằng cách so sánh với isCorrect của option
+        const isCorrect = currentQuestion.options[playerAnswer?.answer]?.isCorrect === true;
         
         if (isCorrect) {
             const currentScore = gameState.scores.get(username) || 0;
-            const timeBonus = Math.floor((playerAnswer?.timeRemaining || 0) / 2);
-            gameState.scores.set(username, currentScore + 10 + timeBonus);
+            gameState.scores.set(username, currentScore + 10);
         }
 
         return {
@@ -170,39 +168,44 @@ function checkAnswersAndProgress(roomId) {
         };
     });
 
-    // Send results
+    // Gửi kết quả về client
     broadcastToRoom(roomId, {
         type: 'all_answers',
         answers: results,
-        correctAnswer: currentQuestion.correctAnswer
+        correctAnswer: currentQuestion.options.findIndex(opt => opt.isCorrect === true)
     });
-
-    // Move to next question after delay
-    setTimeout(() => {
-        gameState.currentQuestionIndex++;
-        sendNextQuestion(roomId);
-    }, 5000);
 }
+
 function endGame(roomId) {
     const activeRoom = activeRooms.get(roomId);
     if (!activeRoom?.gameState?.isActive) return;
 
-    const finalResults = Array.from(activeRoom.gameState.scores.entries())
-        .map(([username, score]) => ({
-            username,
-            score
-        }))
-        .sort((a, b) => b.score - a.score);
+    const { gameState } = activeRoom;
 
-    broadcastToRoom(roomId, {
-        type: 'end_game',
-        results: finalResults
+    // Make sure we have scores for all players
+    activeRoom.players.forEach((player, username) => {
+        if (!gameState.scores.has(username)) {
+            gameState.scores.set(username, 0);
+        }
     });
 
-    // Cleanup
-    if (activeRoom.gameState.timer) {
-        clearTimeout(activeRoom.gameState.timer);
-    }
+    // Calculate final results
+    const finalResults = Array.from(gameState.scores.entries())
+        .map(([username, score]) => ({
+            username,
+            score: score || 0 // Ensure score is never undefined
+        }))
+        .filter(result => activeRoom.players.has(result.username)) // Only include active players
+        .sort((a, b) => b.score - a.score);
+
+    // Send end game message with results
+    broadcastToRoom(roomId, {
+        type: 'end_game',
+        results: finalResults,
+        totalQuestions: gameState.totalQuestions
+    });
+
+    // Reset game state
     activeRoom.gameState = new GameState();
 }
 
@@ -290,21 +293,15 @@ function initWebSocket(server) {
                             const activeRoom = activeRooms.get(userRoom);
                             if (!activeRoom?.gameState?.isActive) return;
                         
-                            const { username, answer, timeRemaining } = data;
-                            activeRoom.gameState.playerAnswers.set(username, {
-                                answer,
-                                timeRemaining
-                            });
+                            const { username, answer } = data;
+                            activeRoom.gameState.playerAnswers.set(username, { answer });
                         
                             if (activeRoom.gameState.playerAnswers.size === activeRoom.players.size) {
-                                if (activeRoom.gameState.timer) {
-                                    clearTimeout(activeRoom.gameState.timer);
-                                }
                                 checkAnswersAndProgress(userRoom);
                             }
                             break;
                         }
-                    case "end_game":
+                        case "end_game":
                         const {roomId_start} = data;
                         console.log("📩 End game:", roomId_start);
                         const playroom = activeRooms.get(roomId_start);
@@ -316,8 +313,20 @@ function initWebSocket(server) {
                                 }));
                             })
                         }
-                        break;
+                            break;
+                        case "next_question": {
+                            const { roomId } = data;
+                            const activeRoom = activeRooms.get(roomId);
+                            if (activeRoom?.gameState?.isActive) {
+                                activeRoom.gameState.currentQuestionIndex++;
+                                sendNextQuestion(roomId);
+                            }
+                            break;
+                        }
                 }
+                
+                
+                
             } catch (error) {
                 console.error('Error processing message:', error);
             }
