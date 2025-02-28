@@ -61,7 +61,6 @@ async function startGame(roomId) {
         activeRoom.gameState.scores.clear();
         activeRoom.gameState.totalQuestions = questions.length; // Set total questions
 
-        // Send first question
         sendNextQuestion(roomId);
         return true;
     } catch (error) {
