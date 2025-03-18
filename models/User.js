@@ -2,11 +2,13 @@ import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   name: { type: String },
-  email: { type: String },
-  password: {type: String},
-  role: {type: String},
+  email: { type: String, default: null },
+  authId: { type: String , default: null},
+  authProvider: { type: String , default: null},
+  password: {type: String, default: null},
+  role: {type: String , default: 'user'},
   createAt: { type: Date, default: Date.now },
 });
 
-// Đảm bảo tên collection là 'users'
-export default mongoose.model('User', userSchema, 'users');
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+export default User;

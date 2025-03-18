@@ -41,6 +41,20 @@ router.post("/create", async (req, res) => {
 });
 
 
+router.get("/getByCategory", async (req, res) => {
+  try {
+
+    const category = req.query.category;
+    console.log(category);
+    const quizze = await Quizze.find({ category: category });
+    res.json(quizze);
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+
+});
+
 
 
 

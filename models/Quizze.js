@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
   createdBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   createAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  category: {type :mongoose.Schema.Types.ObjectId, ref:'Category'},
+  image: {type: String},
+  level: {type: String},
+  rating: {type: Number},
 });
 
 // Đảm bảo tên collection là 'users'
