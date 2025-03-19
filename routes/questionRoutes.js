@@ -12,4 +12,7 @@ router.post('/',createQuestion);
 
 router.get('/getQuestionsByQuizzId', getQuestionsByQuizzId); 
 
+router.post('/create', createQuestion);
+
+
 export default router;

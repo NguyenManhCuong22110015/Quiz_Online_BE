@@ -22,20 +22,39 @@ export const getQuestionById = async (req, res) => {
 }
 
 
+
 export const createQuestion = async (req, res) => {
-    const question = new Question({
-        quizId: req.body.quizId,
-        type: req.body.type,
-        text: req.body.text,
-        options: req.body.options,
-    });
-   try {
-    const newQuestion = await Question.create(question);
-    res.json(newQuestion);
-   }
-   catch(err){
-    console.log(err);
-   }
+    const data = req.body;
+    try {
+        if (Array.isArray(data)) {
+            
+            const newQuestions = await Promise.all(
+                data.map(async (questionData) => {
+                    const question = new Question({
+                        quizId: questionData.quizId,
+                        type: questionData.type,
+                        text: questionData.question, 
+                        layout: questionData.layout,
+                        points: questionData.points, 
+                        time: questionData.time,
+                        media: questionData.mediaUrl ? questionData.mediaUrl : "",
+                        description: questionData.description,
+                        options: questionData.options,
+                    });
+                    
+                    return question.save();
+                })
+            );
+            res.status(201).json(newQuestions);
+        }        
+        else {
+            console.log('Invalid question data received');
+            res.status(400).json({ message: "Invalid question data" });
+        }
+    } catch (error) {
+        console.error('Error creating question(s):', error);
+        res.status(500).json({ message: error.message });
+    }
 }
 
 

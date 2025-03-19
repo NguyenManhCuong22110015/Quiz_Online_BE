@@ -5,6 +5,11 @@ const userSchema = new mongoose.Schema({
     type: { type: String },
     text: {type: String},
     options: {type: Array},
+    layout: {type: String},
+    point: {type: Number},
+    time: {type: Number},
+    description: {type: String},
+    media: {type: String, default: ''},
   createAt: { type: Date, default: Date.now },
 });
 

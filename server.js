@@ -7,6 +7,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import http from 'http';
 import initWebSocket from './websocket.js';
 import roomRoutes from './routes/roomQuizRoute.js';
+import mediaRoutes from './routes/mediaRoute.js';
 import categoryRoutes from './routes/categoryRoute.js';
 import session  from "express-session";
 import connectMongoDBSession  from "connect-mongodb-session";
@@ -72,6 +73,9 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/media', mediaRoutes);
+
+
 server.listen(PORT, '0.0.0.0' ,() => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`WebSocket server is ready`);
