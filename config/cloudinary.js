@@ -21,7 +21,8 @@ const storage = new CloudinaryStorage({
         resource_type: "video", 
         format: "mp3"
       };
-    } else {
+    }
+     else if (file.mimetype.startsWith("img/")) {
       return {
         folder: "quizz_app/images",
         allowed_formats: ["jpg", "jpeg", "png", "gif"],
@@ -35,13 +36,13 @@ const storage = new CloudinaryStorage({
 const upload = multer({ 
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    console.log("File received:", file.mimetype);
-    if (!file.mimetype.startsWith("audio/")) {
-      return cb(new Error("Only audio files are allowed"), false);
-    }
-    cb(null, true);
-  }
+  // fileFilter: (req, file, cb) => {
+  //   console.log("File received:", file.mimetype);
+  //   if (!file.mimetype.startsWith("audio/")) {
+  //     return cb(new Error("Only audio files are allowed"), false);
+  //   }
+  //   cb(null, true);
+  // }
 
 });
 

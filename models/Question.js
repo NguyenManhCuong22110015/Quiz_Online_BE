@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
     time: {type: Number},
     description: {type: String},
     media: {type: String, default: ''},
+    mediaType: {type: String, default: ''},
   createAt: { type: Date, default: Date.now },
 });
 

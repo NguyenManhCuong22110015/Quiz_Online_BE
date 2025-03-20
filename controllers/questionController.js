@@ -39,6 +39,7 @@ export const createQuestion = async (req, res) => {
                         time: questionData.time,
                         media: questionData.mediaUrl ? questionData.mediaUrl : "",
                         description: questionData.description,
+                        mediaType: questionData.mediaType,
                         options: questionData.options,
                     });
                     
@@ -69,4 +70,17 @@ export const getQuestionsByQuizzId = async (req, res) => {
     }
 }
 
+export const updateQuestion = async (req, res) => {
+    try {
+        const question = req.body;
+        console.log(question);
+        const updatedQuestion = await Question.findByIdAndUpdate
+
+        (question.id, question, { new: true });
+        res.json(updatedQuestion);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
 

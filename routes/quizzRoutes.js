@@ -2,6 +2,9 @@ import { Router } from 'express';
 import Quizze from '../models/Quizze.js';
 import { upload, cloudinary } from '../config/cloudinary.js';
 import {getIdByName} from './categoryRoute.js'
+import {uploadImage} from '../services/mediaService.js'
+
+
 const router = Router();
 
 router.get('/getByUserId', async (req, res) => {
@@ -60,7 +63,7 @@ router.get("/getByCategory", async (req, res) => {
 
 router.post("/create", async (req, res) => {
   const { title, description, category, level, createdBy, imageUrl } = req.body;
-  console.log(title, description, category, level, createdBy, imageUrl)
+
 
   const categoryId = await getIdByName(category) 
   
@@ -74,8 +77,6 @@ router.post("/create", async (req, res) => {
       createdBy:createdBy,
     });
     
-   
-
     const newQuizze = await quizze.save();
     res.status(201).json(newQuizze);
   } catch (error) {
@@ -99,6 +100,27 @@ router.delete('/delete-image/:publicId', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+router.put("/update/:id", async (req, res) => {
+  const { title, description, category, level, image } = req.body;
+;
+  const { id } = req.params;
+  try {
+    const quizze = await Quizze.findById(id); 
+    if (title) quizze.title = title;
+    if (description) quizze.description = description;
+    if (category) quizze.category = category;
+    if (level) quizze.level = level;
+    if (image) quizze.image = image;
+    quizze.updatedAt = new Date();
+    const updatedQuizze = await quizze.save();
+    res.json(updatedQuizze);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 
 
 
