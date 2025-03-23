@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import Quizze from '../models/Quizze.js';
-import { upload, cloudinary } from '../config/cloudinary.js';
+import { cloudinary } from '../config/cloudinary.js';
 import {getIdByName} from './categoryRoute.js'
-import {uploadImage} from '../services/mediaService.js'
-
+import {generateQuiz, generateQuizFromPDF} from '../services/generateQuizService.js'
+import multer from 'multer';
 
 const router = Router();
 
@@ -121,6 +121,62 @@ router.put("/update/:id", async (req, res) => {
   }
 });
 
+router.post("/generate", async (req, res) => {
+  try {
+    const prompt = req.body.prompt;
+    const quizze = await generateQuiz(prompt);
+
+    res.json(quizze);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+router.post('/generate-quizzes-by-pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const fileBuffer = req.file.buffer;
+    console.log(`Received file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    
+    if (!Buffer.isBuffer(fileBuffer)) {
+      return res.status(400).json({ error: 'Invalid file format' });
+    }
+
+    const maxSize = 60 * 1024 * 1024; // 60MB
+    if (fileBuffer.length > maxSize) {
+      return res.status(400).json({ error: 'File is too large. Maximum size is 60MB.' });
+    }
+
+    if (req.file.mimetype !== 'application/pdf') {
+      return res.status(400).json({ error: 'Only PDF files are allowed.' });
+    }
+
+    console.log("🔹 Gọi service generateQuizFromPDF...");
+    const quizzes = await generateQuizFromPDF(fileBuffer);
+    
+    if (!quizzes || quizzes.length === 0) {
+      return res.status(400).json({ error: 'Could not generate quizzes from PDF.' });
+    }
+    
+    console.log(`✅ Trả về ${quizzes.length} câu hỏi cho client`);
+    console.log(quizzes);
+
+
+    return res.json(quizzes);
+  } catch (error) {
+    console.error("❌ Error processing PDF:", error);
+    return res.status(500).json({ 
+      error: 'Failed to process PDF file',
+      details: error.message 
+    });
+  }
+});
 
 
 
