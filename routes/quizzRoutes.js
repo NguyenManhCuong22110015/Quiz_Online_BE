@@ -4,6 +4,8 @@ import { cloudinary } from '../config/cloudinary.js';
 import {getIdByName} from './categoryRoute.js'
 import {generateQuiz, generateQuizFromPDF} from '../services/generateQuizService.js'
 import multer from 'multer';
+import Question from '../models/Question.js';
+import { fetchImage } from '../config/googleSearch.js';
 
 const router = Router();
 
@@ -17,6 +19,19 @@ router.get('/getByUserId', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+router.get('/getById', async (req, res) => {
+  try {
+    const { id } = req.query;
+    
+    const quizze = await Quizze.find({ _id: id }).findOne(); 
+    res.json(quizze);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get('/getAll', async (req, res) => {
   try {
     const { userId } = req.query;
@@ -49,7 +64,6 @@ router.get("/getByCategory", async (req, res) => {
   try {
 
     const category = req.query.category;
-    console.log(category);
     const quizze = await Quizze.find({ category: category });
     res.json(quizze);
   }
@@ -124,10 +138,15 @@ router.put("/update/:id", async (req, res) => {
 router.post("/generate", async (req, res) => {
   try {
     const prompt = req.body.prompt;
-    const quizze = await generateQuiz(prompt);
-
-    res.json(quizze);
+    const quizData = await generateQuiz(prompt);
+    
+    // Giả sử generateQuiz đã gọi generateQuizGroqToJSON và lấy dữ liệu hình ảnh
+    res.json({
+      questions: quizData.questions || [],
+      topicImage: quizData.topicImage || null
+    });
   } catch (error) {
+    console.error("Error generating quiz:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -142,7 +161,6 @@ router.post('/generate-quizzes-by-pdf', upload.single('pdf'), async (req, res) =
     }
 
     const fileBuffer = req.file.buffer;
-    console.log(`Received file: ${req.file.originalname}, size: ${req.file.size} bytes`);
     
     if (!Buffer.isBuffer(fileBuffer)) {
       return res.status(400).json({ error: 'Invalid file format' });
@@ -157,15 +175,12 @@ router.post('/generate-quizzes-by-pdf', upload.single('pdf'), async (req, res) =
       return res.status(400).json({ error: 'Only PDF files are allowed.' });
     }
 
-    console.log("🔹 Gọi service generateQuizFromPDF...");
     const quizzes = await generateQuizFromPDF(fileBuffer);
     
     if (!quizzes || quizzes.length === 0) {
       return res.status(400).json({ error: 'Could not generate quizzes from PDF.' });
     }
     
-    console.log(`✅ Trả về ${quizzes.length} câu hỏi cho client`);
-    console.log(quizzes);
 
 
     return res.json(quizzes);
@@ -178,6 +193,84 @@ router.post('/generate-quizzes-by-pdf', upload.single('pdf'), async (req, res) =
   }
 });
 
+
+router.put("/save-questions/:id", async (req, res) => {
+  const { allQuestions } = req.body;
+  const { id } = req.params;
+  try {
+    const savedQuestions = await Promise.all(
+      allQuestions.map(async (question) => {
+        let options = [];
+        
+        if (question.choices && Array.isArray(question.choices)) {
+          options = question.choices.map(choice => {
+            if (typeof choice === 'object' && 'text' in choice && 'isCorrect' in choice) {
+              return {
+                option: choice.text,
+                isCorrect: choice.isCorrect
+              };
+            }
+            else if (typeof choice === 'string') {
+              return {
+                option: choice,
+                isCorrect: false
+              };
+            }
+            return choice;
+          });
+        }
+        
+        console.log("Saving question:", {
+          type: question.type || 'multiple-choice',
+          text: question.question || question.text,
+          options: options
+        });
+        
+        const newQuestion = new Question({
+          type: question.type || 'multiple-choice',
+          text: question.question || question.text,
+          options: options,
+          quizId: id
+        });
+        
+        return await newQuestion.save();
+      })
+    );
+    
+    console.log(`Saved ${savedQuestions.length} questions successfully`);
+    
+    // Cập nhật quiz với các câu hỏi mới
+    await Quizze.findByIdAndUpdate(id, {
+      $push: { questions: { $each: savedQuestions.map(q => q._id) } },
+      updatedAt: new Date()
+    });
+    
+    res.json({ message: 'Questions saved successfully' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+router.get("/test", async function(req, res) {
+  let imageBase64;
+  try {
+    try {
+           
+      imageBase64 = await fetchImage('naruto')
+   } catch (imageError) {
+       console.error('Image generation failed:', imageError);
+   }
+  
+   res.json({ 
+      image: imageBase64 ,
+       
+   });
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+
+})
 
 
 export default router;

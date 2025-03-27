@@ -17,6 +17,8 @@ import passport from 'passport';
 import google from './authentication/google.js';
 import authRoutes from './routes/authRoute.js';
 import facebook from './authentication/facebook.js';
+import resultRoutes from './routes/resultRoute.js';
+
 dotenv.config(); 
 
 const app = express();
@@ -74,7 +76,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/media', mediaRoutes);
-
+app.use('/api/results', resultRoutes);
 
 server.listen(PORT, '0.0.0.0' ,() => {
     console.log(`Server running on http://localhost:${PORT}`);

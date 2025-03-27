@@ -68,10 +68,8 @@ const createQuizFunctionDeclaration = {
   
   export async function generateQuiz(prompt) {
     try {
-      console.log("🔹 Khởi tạo chat với Gemini...");
       const chat = await generativeModel.startChat();
       
-      console.log("🔹 Gửi prompt đến Gemini:", prompt);
       const result = await chat.sendMessage(prompt);
 
       const call = result.response.functionCalls()?.[0];
@@ -86,7 +84,6 @@ const createQuizFunctionDeclaration = {
       } else {
         console.log("❌ Không có function call nào được tạo!");
         
-        // Tạo quiz mặc định nếu không có function call
         return generateQuizGroqToJSON(
           ["General Knowledge"], 
           ["Multiple choices"], 
