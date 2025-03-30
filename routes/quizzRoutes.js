@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Quizze from '../models/Quizze.js';
 import { cloudinary } from '../config/cloudinary.js';
-import {getIdByName} from './categoryRoute.js'
+import {getIdByName} from "../controllers/categoryController.js"
 import {generateQuiz, generateQuizFromPDF} from '../services/generateQuizService.js'
 import multer from 'multer';
 import Question from '../models/Question.js';
