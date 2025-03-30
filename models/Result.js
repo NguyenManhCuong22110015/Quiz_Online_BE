@@ -9,15 +9,42 @@ const userSchema = new mongoose.Schema({
   endTime: {type : Date, default : Date.now},
   attempt : {type : Number, default : 0},
   status : {type : String, default : 'PENDING', enum : ['PENDING', 'COMPLETED', 'EXPIRED', 'CANCELLED']},
-  UserAnswwer : {type : Array, default : [
-    {
-      question: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true },
-      answer: { type: String },
-      isCorrect: { type: Boolean, default: false },
-      points: { type: Number, default: 100 },
-      timeTaken: { type: Number, default: 0 }
+  UserAnswers: [{
+    question: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question',
+
+    },
+    answer: {
+        type: String
+    },
+    isCorrect: {
+        type: Boolean,
+        default: false
+    },
+    points: {
+        type: Number,
+        default: 0
+    },
+    timeTaken: {
+        type: Number,
+        default: 0
     }
-  ]},
+}]
+}, {
+toJSON: { 
+    transform: function(doc, ret) {
+        if (ret.UserAnswers) {
+            ret.UserAnswers = ret.UserAnswers.filter(answer => 
+                typeof answer === 'object' && 
+                answer !== null && 
+                answer.question !== undefined
+            );
+        }
+        return ret;
+    }
+}
 });
+
 
 export default mongoose.model('Result', userSchema, 'results');

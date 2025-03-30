@@ -18,7 +18,7 @@ import google from './authentication/google.js';
 import authRoutes from './routes/authRoute.js';
 import facebook from './authentication/facebook.js';
 import resultRoutes from './routes/resultRoute.js';
-
+import commentRoutes from './routes/commentRoute.js';
 dotenv.config(); 
 
 const app = express();
@@ -35,7 +35,7 @@ const store = new MongoDBStore({
 
 
 app.use(cors({
-    origin: [ 'http://localhost:5173','https://webmern-nmcuong08s-projects.vercel.app', "https://webmern.vercel.app"], 
+    origin: [ 'http://localhost:5173','https://webmern-nmcuong08s-projects.vercel.app', "https://webmern.vercel.app","http://192.168.100.217:5173" ], 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     optionsSuccessStatus: 200
 }));
@@ -77,6 +77,8 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/results', resultRoutes);
+app.use("/api/comments", commentRoutes)
+
 
 server.listen(PORT, '0.0.0.0' ,() => {
     console.log(`Server running on http://localhost:${PORT}`);

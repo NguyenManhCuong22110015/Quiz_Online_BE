@@ -152,6 +152,38 @@ router.get('/check-auth', (req, res) => {
   });
 });
 
+router.put('/update-field', async (req, res) => {
+  const { userId, fieldName, fieldValue } = req.body;
+  console.log(req.body);
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { [fieldName]: fieldValue },
+      { new: true }
+    );
+    if (!updatedUser) {
+      console.log("User not found");
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+}
+);
 
+router.get('/:id', async (req, res) => {
+  try {
+      const userId = req.params.id;
+      const user = await User.findById(userId).select("-password"); // Exclude password from the response
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+      res.json(user);
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+})
 
 export default router;
