@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   image: {type: String, default:null},
   level: {type: String, default: 'easy'},
   rating: {type: Number, default: 0},
+  published: {type: Boolean, default: false},
 });
 
 // Đảm bảo tên collection là 'users'

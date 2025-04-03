@@ -18,7 +18,6 @@ async function translateToEnglish(text) {
 async function extractKeywords(question) {
     try {
         const translatedQuestion = await translateToEnglish(question);
-        console.log(`Original: "${question}" -> Translated: "${translatedQuestion}"`);
         
         const cleanQuestion = translatedQuestion.replace(/[^\w\s]/g, '');
         
@@ -34,14 +33,14 @@ async function extractKeywords(question) {
         const filteredWords = allWords.filter(word => 
             !stopWords.includes(word.toLowerCase()) && word.length > 1
         );
-        
-        console.log("Extracted keywords:", filteredWords);
+        const resultString = filteredWords.join(" and ");
+        console.log("Extracted keywords:", resultString);
         
         if (filteredWords.length === 0) {
             return cleanQuestion;
         }
         
-        return filteredWords[0];
+        return resultString;
     } catch (error) {
         console.error('Keyword extraction error:', error.message);
         return question;

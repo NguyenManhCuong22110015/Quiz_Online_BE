@@ -64,7 +64,7 @@ router.get("/getByCategory", async (req, res) => {
   try {
 
     const category = req.query.category;
-    const quizze = await Quizze.find({ category: category });
+    const quizze = await Quizze.find({ category: category, published: true });
     res.json(quizze);
   }
   catch (error) {
@@ -117,8 +117,10 @@ router.delete('/delete-image/:publicId', async (req, res) => {
 
 
 router.put("/update/:id", async (req, res) => {
-  const { title, description, category, level, image } = req.body;
-;
+  const { title, description, category, level, image, published } = req.body;
+
+  
+
   const { id } = req.params;
   try {
     const quizze = await Quizze.findById(id); 
@@ -127,6 +129,7 @@ router.put("/update/:id", async (req, res) => {
     if (category) quizze.category = category;
     if (level) quizze.level = level;
     if (image) quizze.image = image;
+    if (published !== undefined) quizze.published = published;
     quizze.updatedAt = new Date();
     const updatedQuizze = await quizze.save();
     res.json(updatedQuizze);

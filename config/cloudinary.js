@@ -22,7 +22,14 @@ const storage = new CloudinaryStorage({
         format: "mp3"
       };
     }
-     else if (file.mimetype.startsWith("img/")) {
+     else if (file.mimetype.startsWith("video/")) {
+      return {
+        folder: "quizz_app/videos",
+        allowed_formats: ["jpg", "jpeg", "png", "gif"],
+        transformation: [{ width: 800, height: 600, crop: "limit" }]
+      };
+    }
+    else  {
       return {
         folder: "quizz_app/images",
         allowed_formats: ["jpg", "jpeg", "png", "gif"],

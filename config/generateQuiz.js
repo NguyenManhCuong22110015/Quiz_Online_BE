@@ -124,7 +124,10 @@ export async function generateQuizGroqToJSON(topic, questionTypes, numberOfQuest
       Yêu cầu:
       - Các loại câu hỏi: ${questionTypes.join(', ')}.
       - Độ khó: ${difficulty}.
+      - Có độ đa dạng cao không bị lặp lại cấu trúc giữa các câu hỏi.
+      - Không có câu hỏi nào giống nhau.
       
+
       Mỗi câu hỏi cần định dạng JSON như sau:
       {
         "question": "Nội dung câu hỏi",
