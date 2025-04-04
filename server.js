@@ -35,7 +35,7 @@ const store = new MongoDBStore({
 
 
 app.use(cors({
-    origin: [ 'http://localhost:5173','https://webmern-nmcuong08s-projects.vercel.app', "https://webmern.vercel.app","http://192.168.100.217:5173" ], 
+    origin: [ process.env.FRONTEND_API,'https://webmern-nmcuong08s-projects.vercel.app', "https://webmern.vercel.app","http://192.168.100.217:5173" ], 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     optionsSuccessStatus: 200
 }));
