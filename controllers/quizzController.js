@@ -1,5 +1,7 @@
 import Question from '../models/Question.js'; 
+import Result from '../models/Result.js';
 import multer from 'multer';
+import Quizze from '../models/Quizze.js';
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -37,6 +39,26 @@ export const getById = async (req, res) => {
         }
 
 }
+export const getDetailById = async (req, res) => {
+  try {
+      const { id } = req.query;   
+      const quizze = await Quizze.find({ _id: id }).findOne(); 
+      const questionNumber = await Question.countDocuments({ quizId: id });
+      const players = await Result.countDocuments({ quiz: id }).populate('user');
+      const data = {
+          quizze: quizze,
+          questionNumber: questionNumber,
+          players: players
+      }
+      console.log(data)
+
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+
+}
+
 
 export const getAll = async (req, res) => {
         try {

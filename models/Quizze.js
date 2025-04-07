@@ -13,5 +13,4 @@ const userSchema = new mongoose.Schema({
   published: {type: Boolean, default: false},
 });
 
-// Đảm bảo tên collection là 'users'
 export default mongoose.model('Quizze', userSchema, 'quizzes');

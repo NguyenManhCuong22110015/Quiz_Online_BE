@@ -6,6 +6,7 @@ import {generateQuiz, generateQuizFromPDF} from '../services/generateQuizService
 import multer from 'multer';
 import Question from '../models/Question.js';
 import { fetchImage } from '../config/googleSearch.js';
+import { getDetailById } from '../controllers/quizzController.js';
 
 const router = Router();
 
@@ -31,6 +32,10 @@ router.get('/getById', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+router.get('/getDetailById', getDetailById);
+
 
 router.get('/getAll', async (req, res) => {
   try {
