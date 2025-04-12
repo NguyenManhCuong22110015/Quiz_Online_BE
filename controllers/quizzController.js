@@ -59,7 +59,29 @@ export const getDetailById = async (req, res) => {
 
 }
 
+export const getChallengesQuizzes = async (req, res) => {
+        try {
+          const quizz = await Quizze.find({rating: { $gt: 0 }}).limit(4).sort({ rating: -1 });
+          
+          const challenges = await Promise.all(
+            quizz.map(async (quiz) => {
+              const questionNumber = await Question.countDocuments({ quizId: quiz._id });
+              const players = await Result.countDocuments({ quiz: quiz._id }).populate('user');
+              
+              return {
+                ...quiz._doc,
+                questionNumber: questionNumber,
+                players: players
+              };
+            })
+          );
 
+
+          res.status(200).json(challenges);
+        } catch (error) {
+          res.status(500).json({ message: error.message });
+        }
+}
 export const getAll = async (req, res) => {
         try {
             const { userId } = req.query;
